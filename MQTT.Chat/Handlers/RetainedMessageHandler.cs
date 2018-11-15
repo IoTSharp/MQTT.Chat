@@ -1,10 +1,10 @@
-﻿using System.Collections.Generic;
-using System.Threading.Tasks;
-using LiteDB;
+﻿using LiteDB;
 using MQTTnet;
 using MQTTnet.Server;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 
-namespace IoT.MqqtBroker
+namespace MQTT.Chat
 {
     internal class RetainedMessageHandler : IMqttServerStorage
     {
@@ -12,8 +12,10 @@ namespace IoT.MqqtBroker
 
         public RetainedMessageHandler(string v)
         {
-            this.v = v?? "RetainedMessages.db";
+            this.v = v ?? "RetainedMessages.db";
         }
+
+        public static IMqttServerStorage Instance { get; internal set; }
 
         public Task<IList<MqttApplicationMessage>> LoadRetainedMessagesAsync()
         {
@@ -36,7 +38,6 @@ namespace IoT.MqqtBroker
         {
             using (var db = new LiteDatabase(v))
             {
-        
                 // Get customer collection
                 var col = db.GetCollection<MqttApplicationMessage>();
                 var task = Task.Factory.StartNew(() =>
@@ -44,7 +45,7 @@ namespace IoT.MqqtBroker
                       col.EnsureIndex(x => x.Topic, true);
                       col.InsertBulk(messages);
                   });
-                return  task;
+                return task;
             }
         }
     }

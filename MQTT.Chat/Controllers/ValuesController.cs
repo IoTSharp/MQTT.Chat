@@ -1,10 +1,7 @@
-﻿using System;
+﻿using Microsoft.AspNetCore.Mvc;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Mvc;
 
-namespace IoT.MqqtBroker.Controllers
+namespace MQTT.Chat.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
