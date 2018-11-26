@@ -44,36 +44,62 @@ namespace MQTT.Chat.Controllers
 
 
         [HttpPost]
-        public async Task<object> Login([FromBody] LoginDto model)
+        public async Task<IActionResult> Login([FromBody] LoginDto model)
         {
-            var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
-
-            if (result.Succeeded)
+            IActionResult actionResult = NoContent();
+            try
             {
-                var appUser = _userManager.Users.SingleOrDefault(r => r.Email == model.Email);
-                return GenerateJwtToken(model.Email, appUser);
-            }
+                var result = await _signInManager.PasswordSignInAsync(model.Email, model.Password, false, false);
 
-            throw new ApplicationException("INVALID_LOGIN_ATTEMPT");
+                if (result.Succeeded)
+                {
+                    var appUser = _userManager.Users.SingleOrDefault(r => r.Email == model.Email);
+                     actionResult=Ok(new { code = 0, msg = "OK", data = GenerateJwtToken(model.Email, appUser) });
+                }
+                else
+                {
+                    actionResult = BadRequest(new { code = -3, msg = "Login Error",data= result });
+                }
+            }
+            catch (Exception ex)
+            {
+
+                actionResult = BadRequest(new { code = -1, msg = ex.Message, data = ex });
+            }
+            return actionResult;
         }
 
         [HttpPost]
         public async Task<object> Register([FromBody] RegisterDto model)
         {
-            var user = new IdentityUser
+            IActionResult actionResult = NoContent();
+            try
             {
-                UserName = model.Email,
-                Email = model.Email
-            };
-            var result = await _userManager.CreateAsync(user, model.Password);
+                var user = new IdentityUser
+                {
+                    UserName = model.Email,
+                    Email = model.Email
+                };
+                var result = await _userManager.CreateAsync(user, model.Password);
 
-            if (result.Succeeded)
+                if (result.Succeeded)
+                {
+                    await _signInManager.SignInAsync(user, false);
+                    actionResult = Ok(new { code = 0, msg = "OK", data = GenerateJwtToken(model.Email, user) });
+                }
+                else
+                {
+                    var msg = from e in result.Errors select $"{e.Code}:{e.Description}\r\n";
+                    actionResult = BadRequest(new { code = -3, msg = string.Join(';', msg.ToArray()) });
+                }
+            }
+            catch (Exception ex)
             {
-                await _signInManager.SignInAsync(user, false);
-                return GenerateJwtToken(model.Email, user);
+
+                actionResult = BadRequest(new { code = -2, msg = ex.Message, data = ex });
             }
 
-            throw new ApplicationException("UNKNOWN_ERROR");
+            return actionResult;
         }
 
         [Authorize]
