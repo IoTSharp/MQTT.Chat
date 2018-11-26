@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Logging;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MQTT.Chat.Data;
 using MQTTnet;
@@ -11,13 +12,20 @@ namespace MQTT.Chat
 {
     public class MqttEventsHandler
     {
-        public MqttEventsHandler(ILogger<MqttEventsHandler> logger, IOptions<MQTTBrokerOption> options, ApplicationDbContext context)
+        public MqttEventsHandler(ILogger<MqttEventsHandler> logger, 
+            IOptions<MQTTBrokerOption> options,
+            ApplicationDbContext context,
+            UserManager<IdentityUser> userManager,
+            SignInManager<IdentityUser> signInManager)
         {
             _logger = logger;
             _context = context;
             _options = options.Value;
+            _userManager = userManager;
+            _signInManager = signInManager;
         }
-
+        UserManager<IdentityUser> _userManager;
+           SignInManager<IdentityUser> _signInManager;
         private MQTTBrokerOption _options;
         private ApplicationDbContext _context;
         private ILogger<MqttEventsHandler> _logger;
@@ -98,10 +106,32 @@ namespace MQTT.Chat
             }
         }
 
-        internal void MqttConnectionValidatorContext(MqttConnectionValidatorContext obj)
+        internal async  Task  MqttConnectionValidatorContextAsync(MqttConnectionValidatorContext obj)
         {
             _logger.LogInformation($"ClientId={obj.ClientId},Endpoint={obj.Endpoint},Username={obj.Username}，Password={obj.Password},WillMessage={obj.WillMessage?.ConvertPayloadToString()}");
-            obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionAccepted;
+            var id = await _userManager.FindByNameAsync(obj.Username);
+ 
+            var sresult = await  _signInManager.PasswordSignInAsync(obj.Username, obj.Password, false, false);
+            if (sresult.Succeeded)
+            {
+                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionAccepted;
+            }
+            else if (sresult.IsLockedOut)
+            {
+                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
+            }
+            else if (sresult.IsNotAllowed)
+            {
+                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedNotAuthorized;
+            }
+            else if (sresult.RequiresTwoFactor)
+            {
+                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
+            }
+            else
+            {
+                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedServerUnavailable;
+            }
         }
     }
 }

@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace IoTSharp.MqqtBroker.Properties {
+namespace MQTT.Chat.Properties {
     using System;
     
     
@@ -39,7 +39,7 @@ namespace IoTSharp.MqqtBroker.Properties {
         public static global::System.Resources.ResourceManager ResourceManager {
             get {
                 if (object.ReferenceEquals(resourceMan, null)) {
-                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("IoTSharp.MqqtBroker.Properties.Resources", typeof(Resources).Assembly);
+                    global::System.Resources.ResourceManager temp = new global::System.Resources.ResourceManager("MQTT.Chat.Properties.Resources", typeof(Resources).Assembly);
                     resourceMan = temp;
                 }
                 return resourceMan;
@@ -66,6 +66,15 @@ namespace IoTSharp.MqqtBroker.Properties {
         public static string ShowHelp {
             get {
                 return ResourceManager.GetString("ShowHelp", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   查找类似 The certificate is installed 的本地化字符串。
+        /// </summary>
+        public static string TheCertificateIsInstalled {
+            get {
+                return ResourceManager.GetString("TheCertificateIsInstalled", resourceCulture);
             }
         }
     }

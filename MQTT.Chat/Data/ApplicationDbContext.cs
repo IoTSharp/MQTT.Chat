@@ -10,6 +10,7 @@ namespace MQTT.Chat.Data
         {
         }
         public DbSet<RetainedMessage> RetainedMessages { get; set; }
+        public DbSet<StoreCertPem> StoreCertPem { get; set; }
 
     }
 }

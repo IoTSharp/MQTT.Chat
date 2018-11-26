@@ -100,4 +100,7 @@
   <data name="ShowHelp" xml:space="preserve">
     <value>显示帮助</value>
   </data>
+  <data name="TheCertificateIsInstalled" xml:space="preserve">
+    <value>The certificate is installed</value>
+  </data>
 </root>

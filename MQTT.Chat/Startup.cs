@@ -34,6 +34,7 @@ namespace MQTT.Chat
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
+            services.AddMqttBrokerOption(Configuration);
             services.AddMQTTDbContext(Configuration);
             services.AddTransient<MqttEventsHandler>();
             services.AddSingleton<IMqttServerStorage, RetainedMessageHandler>();

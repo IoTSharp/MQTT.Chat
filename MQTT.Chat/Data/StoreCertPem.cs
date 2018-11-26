@@ -9,7 +9,7 @@ namespace MQTT.Chat.Data
     public class StoreCertPem
     {
         [Key]
-        public Guid Id { get; set; }
+        public string Id { get; set; }
         public string ClientCert { get; set; }
         public string ClientKey { get; set; }
 

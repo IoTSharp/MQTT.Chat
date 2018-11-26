@@ -53,11 +53,13 @@ namespace MQTT.Chat
             if (options.BrokerCertificate != null)
             {
                 builder.WithEncryptionCertificate(options.BrokerCertificate.Export(X509ContentType.Pfx))
-                .WithEncryptedEndpoint();
+                .WithEncryptedEndpoint()
+                .WithEncryptedEndpointPort(options.SSLPort);
             }
             builder.WithDefaultEndpoint()
+            .WithDefaultEndpointPort(options.Port)
             .WithStorage(RetainedMessageHandler.Instance)
-            .WithConnectionValidator(MqttEventsHandler.Instance.MqttConnectionValidatorContext)
+            .WithConnectionValidator(async obj => await MqttEventsHandler.Instance.MqttConnectionValidatorContextAsync(obj))
            .Build();
         }
 
@@ -85,9 +87,10 @@ namespace MQTT.Chat
                         {
                             option.BrokerCertificate = new X509Certificate2().LoadPem(option.CertificateFile, option.PrivateKeyFile);
                         }
-                        if (!new FileInfo(option.MqttStorageFile).Directory.Exists) new FileInfo(option.MqttStorageFile).Directory.Create();
                         if (!new FileInfo(option.CertificateFile).Directory.Exists) new FileInfo(option.CertificateFile).Directory.Create();
                         if (!new FileInfo(option.CACertificateFile).Directory.Exists) new FileInfo(option.CACertificateFile).Directory.Create();
+                        option.Port = option.Port == 0 ? 1883 : option.Port;
+                        option.SSLPort = option.SSLPort == 0 ? 8883 : option.SSLPort;
                     }));
         }
 
@@ -143,6 +146,7 @@ namespace MQTT.Chat
         public string CertificateFile { get; set; } // "CertificateFile": "%APPDATA%\\IoT.MqqtBroker\\server.crt",
         public string PrivateKeyFile { get; set; } //"PrivateKeyFile": "%APPDATA%\\IoT.MqqtBroker\\server.key",
         public string KeyPassword { get; set; } // "KeyPassword": "",
-        public string MqttStorageFile { get; set; } // "MqttStorageFile": "%APPDATA%\\IoT.MqqtBroker\\RetainedMessages.db"
+        public int  SSLPort { get;  set; }=8883;
+        public int Port { get; set; } = 1883;
     }
 }
