@@ -44,10 +44,11 @@ namespace MQTT.Chat
             services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
             services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption());
             services.AddMqttTcpServerAdapter();
+            services.AddSwagger();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<MQTTBrokerOption> options, MqttEventsHandler mqttEventsHandler, ApplicationDbContext context, IMqttServerStorage serverStorage)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<MQTTBrokerOption> options, MqttEventsHandler mqttEventsHandler, ApplicationDbContext context)
         {
             if (env.IsDevelopment())
             {
@@ -67,7 +68,8 @@ namespace MQTT.Chat
             app.UseMvc();
             app.UseMqttEndpoint();
             MqttEventsHandler.Instance = mqttEventsHandler;
-            RetainedMessageHandler.Instance = serverStorage;
+          //  RetainedMessageHandler.Instance = serverStorage;
+            MQTTBroker.MQTTBrokerOption = options.Value;
             app.UseMqttServer(server =>
             {
                 server.ClientConnected += mqttEventsHandler.Server_ClientConnected;

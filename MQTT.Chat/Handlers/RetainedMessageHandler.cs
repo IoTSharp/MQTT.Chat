@@ -1,52 +1,73 @@
 ﻿using LiteDB;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using MQTT.Chat.Data;
 using MQTTnet;
 using MQTTnet.Server;
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace MQTT.Chat
 {
-    internal class RetainedMessageHandler : IMqttServerStorage
+    public class RetainedMessageHandler : IMqttServerStorage
     {
-        private string v;
-
-        public RetainedMessageHandler(string v)
+        ApplicationDbContext _context;
+        ILogger _logger;
+        public RetainedMessageHandler(ILogger<RetainedMessageHandler> logger, ApplicationDbContext context)
         {
-            this.v = v ?? "RetainedMessages.db";
+            _context = context;
+            _logger = logger;
+
         }
 
-        public static IMqttServerStorage Instance { get; internal set; }
+        public static IMqttServerStorage Instance { get;  set; }
 
-        public Task<IList<MqttApplicationMessage>> LoadRetainedMessagesAsync()
+        public async Task<IList<MqttApplicationMessage>> LoadRetainedMessagesAsync()
         {
-            using (var db = new LiteDatabase(v))
+            await Task.CompletedTask;
+            try
             {
-                // Get customer collection
-                var col = db.GetCollection<MqttApplicationMessage>();
-                // Use LINQ to query documents (with no index)
-                var results = Task.Factory.StartNew(() =>
-                {
-                    var r = (IList<MqttApplicationMessage>)new List<MqttApplicationMessage>(col.FindAll());
-                    db.DropCollection(col.Name);
-                    return r;
-                });
-                return results;
+                return await _context.RetainedMessages.ToArrayAsync();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"load RetainedMessage error {ex.Message} ");
+                return new List<MqttApplicationMessage>();
             }
         }
 
         public Task SaveRetainedMessagesAsync(IList<MqttApplicationMessage> messages)
         {
-            using (var db = new LiteDatabase(v))
+            Task.Factory.StartNew(() =>
             {
-                // Get customer collection
-                var col = db.GetCollection<MqttApplicationMessage>();
-                var task = Task.Factory.StartNew(() =>
-                  {
-                      col.EnsureIndex(x => x.Topic, true);
-                      col.InsertBulk(messages);
-                  });
-                return task;
-            }
+                _context.Database.BeginTransaction();
+                try
+                {
+                    DateTime dateTime = DateTime.Now;
+                    var needsave = from mam in messages select new RetainedMessage(mam);
+                    var ids = needsave.Select(x => x.Id).ToList();
+                    var dbids = _context.RetainedMessages.Select(x => x.Id).ToArray();
+                    var needdelete = dbids.Except(ids);//.Except(dbids);
+                    var del = from f in _context.RetainedMessages where needdelete.Contains(f.Id) select f;
+                    var needadd = ids.Except(dbids);
+                    var add = from f in needsave where needadd.Contains(f.Id) select f;
+                    if (del.Any()) _context.RetainedMessages.RemoveRange(del);
+                    if (add.Any()) _context.RetainedMessages.AddRange(add);
+                    int ret = _context.SaveChanges();
+                    _context.Database.CommitTransaction();
+                    _logger.LogInformation($"SaveRetainedMessagesAsync 处理{ret}条数据，耗时{DateTime.Now.Subtract(dateTime).TotalSeconds}");
+                }
+                catch (Exception ex)
+                {
+                    _context.Database.RollbackTransaction();
+                    _logger.LogError(ex, $"SaveRetainedMessagesAsync 时遇到异常{ex.Message}");
+                }
+            }, CancellationToken.None, TaskCreationOptions.DenyChildAttach, TaskScheduler.Default);
+            return Task.CompletedTask;
         }
     }
 }

@@ -9,5 +9,7 @@ namespace MQTT.Chat.Data
             : base(options)
         {
         }
+        public DbSet<RetainedMessage> RetainedMessages { get; set; }
+
     }
 }
