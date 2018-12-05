@@ -6,6 +6,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MQTT.Chat.Data;
+using MQTT.Chat.Handlers;
 using MQTTnet.Diagnostics;
 using MQTTnet.Protocol;
 using MQTTnet.Server;
@@ -18,6 +19,9 @@ namespace MQTT.Chat
 {
     public static class MQTTBroker
     {
+        public static BrokerStatus Status { get; set; } = new BrokerStatus();
+ 
+
         public static void AddMQTTDbContext(this IServiceCollection services, IConfiguration configuration)
         {
             var _DataBase = configuration["DataBase"] ?? "sqlite";

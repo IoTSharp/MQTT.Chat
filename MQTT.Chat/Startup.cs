@@ -1,19 +1,30 @@
 ﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MQTT.Chat.Data;
+using MQTT.Chat.Handlers;
 using MQTTnet.AspNetCore;
 using MQTTnet.Server;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using NJsonSchema;
 using NSwag.AspNetCore;
+using Quartz;
+using QuartzHostedService;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
+
 
 namespace MQTT.Chat
 {
@@ -35,7 +46,7 @@ namespace MQTT.Chat
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
-            services.AddHealthChecks();
+            services.AddHealthChecks().AddGCInfoCheck("GCInfo").AddBrokerCheck("BrokerStatus");
             services.AddMqttBrokerOption(Configuration);
 
             services.AddMQTTDbContext(Configuration);
@@ -57,6 +68,15 @@ namespace MQTT.Chat
                 configure.Description = description?.Description;
 
             });
+            services.UseQuartzHostedService()
+            .RegiserJob<BrokerStatus>(() =>
+            {
+                var result = new List<TriggerBuilder>();
+
+                result.Add(TriggerBuilder.Create()
+                        .WithSimpleSchedule(x => x.WithIntervalInSeconds(10).RepeatForever()));
+                return result;
+            });
 
         }
 
@@ -75,10 +95,9 @@ namespace MQTT.Chat
             app.UseHttpsRedirection();
             app.UseCookiePolicy();
             app.UseAuthentication();
-            app.UseHealthChecks("/health");
             app.UseMvc();
             app.UseMqttEndpoint();
-            app.UseEventsHander( mqttEventsHandler);
+            app.UseEventsHander(mqttEventsHandler);
             _storage = storage;
             app.UseMqttServer(server =>
             {
@@ -92,9 +111,32 @@ namespace MQTT.Chat
             });
             app.UseMqttBrokerLogger();
             app.UseAuthentication();
+            app.UseHealthChecks("/health", new HealthCheckOptions()
+            {
+                // This custom writer formats the detailed status as JSON.
+                ResponseWriter = WriteResponse,
+            });
+
+            app.Run(async (context) =>
+            {
+                await context.Response.WriteAsync("Go to /health to see the health status");
+            });
 
         }
+        private static Task WriteResponse(HttpContext httpContext, HealthReport result)
+        {
+            httpContext.Response.ContentType = "application/json";
 
-   
+            var json = new JObject(
+                new JProperty("status", result.Status.ToString()),
+                new JProperty("results", new JObject(result.Entries.Select(pair =>
+                    new JProperty(pair.Key, new JObject(
+                        new JProperty("status", pair.Value.Status.ToString()),
+                        new JProperty("description", pair.Value.Description),
+                        new JProperty("data", new JObject(pair.Value.Data.Select(p => new JProperty(p.Key, p.Value))))))))));
+            return httpContext.Response.WriteAsync(json.ToString(Formatting.Indented));
+        }
+
+
     }
 }
