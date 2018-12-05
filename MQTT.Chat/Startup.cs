@@ -56,7 +56,11 @@ namespace MQTT.Chat
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddAuthentication().AddJwtBearer();
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
+            services.Configure<ForwardedHeadersOptions>(options =>
+            {
+                options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
+            });
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
             services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
             services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption(_storage));
             services.AddMqttTcpServerAdapter();
@@ -67,7 +71,6 @@ namespace MQTT.Chat
                 configure.Title = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
                 configure.Version = typeof(Startup).GetTypeInfo().Assembly.GetName().Version.ToString();
                 configure.Description = description?.Description;
-
             });
             services.UseQuartzHostedService()
             .RegiserJob<BrokerStatus>(() =>
@@ -91,7 +94,7 @@ namespace MQTT.Chat
                 app.UseDeveloperExceptionPage();
             }
             app.UseSwaggerUi3();
-            app.UseSwagger();
+         
             app.UseHttpsRedirection();
             app.UseCookiePolicy();
             app.UseAuthentication();
@@ -116,7 +119,21 @@ namespace MQTT.Chat
             {
                 ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
             });
-
+            app.UseSwagger(config => config.PostProcess = (document, request) =>
+            {
+                if (request.Headers.ContainsKey("X-External-Host"))
+                {
+                    // Change document server settings to public
+                    document.Host = request.Headers["X-External-Host"].First();
+                    document.BasePath = request.Headers["X-External-Path"].First();
+                }
+            });
+            app.UseSwaggerUi3(config => config.TransformToExternalPath = (internalUiRoute, request) =>
+            {
+                // The header X-External-Path is set in the nginx.conf file
+                var externalPath = request.Headers.ContainsKey("X-External-Path") ? request.Headers["X-External-Path"].First() : "";
+                return externalPath + internalUiRoute;
+            });
             app.UseAuthentication();
             app.UseHealthChecks("/health", new HealthCheckOptions()
             {
