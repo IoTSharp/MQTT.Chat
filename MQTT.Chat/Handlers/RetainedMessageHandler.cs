@@ -15,11 +15,11 @@ namespace MQTT.Chat
 {
     public class RetainedMessageHandler : IMqttServerStorage
     {
-        ApplicationDbContext _context;
-        ILogger _logger;
-        public RetainedMessageHandler(ILogger<RetainedMessageHandler> logger, ApplicationDbContext context)
+        static ApplicationDbContext _context;
+        static ILogger _logger;
+        public RetainedMessageHandler(ILogger<RetainedMessageHandler> logger, DbContextOptions<ApplicationDbContext> contextOptions)
         {
-            _context = context;
+            _context =new ApplicationDbContext (contextOptions);
             _logger = logger;
 
         }

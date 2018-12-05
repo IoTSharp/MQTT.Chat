@@ -1,11 +1,13 @@
 ﻿using IoTSharp.X509Extensions;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using MQTT.Chat.Data;
 using MQTTnet.Diagnostics;
+using MQTTnet.Protocol;
 using MQTTnet.Server;
 using System;
 using System.IO;
@@ -44,25 +46,29 @@ namespace MQTT.Chat
                     break;
             }
         }
-
-         internal static MQTTBrokerOption MQTTBrokerOption;
-
-        public static void UseMqttBrokerOption(this MqttServerOptionsBuilder builder)
+        internal static MqttEventsHandler _mqttEventsHandler;
+        internal static MQTTBrokerOption MQTTBrokerOption;
+        public static void UseMqttBrokerOption(this MqttServerOptionsBuilder builder,  IMqttServerStorage storage )
         {
             var options = MQTTBrokerOption;
-            if (options.BrokerCertificate != null)
-            {
-                builder.WithEncryptionCertificate(options.BrokerCertificate.Export(X509ContentType.Pfx))
-                .WithEncryptedEndpoint()
-                .WithEncryptedEndpointPort(options.SSLPort);
-            }
-            builder.WithDefaultEndpoint()
-            .WithDefaultEndpointPort(options.Port)
-            .WithStorage(RetainedMessageHandler.Instance)
-            .WithConnectionValidator(async obj => await MqttEventsHandler.Instance.MqttConnectionValidatorContextAsync(obj))
-           .Build();
+                if (options.BrokerCertificate != null)
+                {
+                    builder.WithEncryptionCertificate(options.BrokerCertificate.Export(X509ContentType.Pfx))
+                    .WithEncryptedEndpoint()
+                    .WithEncryptedEndpointPort(options.SSLPort);
+                }
+                builder.WithDefaultEndpoint()
+                .WithDefaultEndpointPort(options.Port)
+                .WithStorage(storage)
+                .WithConnectionValidator(_mqttEventsHandler.MqttConnectionValidatorContextAsync)
+               .Build();
+   
         }
-
+        public static void UseEventsHander(this IApplicationBuilder app, MqttEventsHandler mqttEventsHandler)
+        {
+            _mqttEventsHandler = mqttEventsHandler;
+            _mqttEventsHandler._signInManager = app.ApplicationServices.CreateScope().ServiceProvider.GetRequiredService<SignInManager<IdentityUser>>();
+        }
         public static void AddMqttBrokerOption(this IServiceCollection services, IConfiguration Configuration)
         {
             services.AddOptions()

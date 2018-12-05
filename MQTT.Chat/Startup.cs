@@ -12,6 +12,7 @@ using MQTTnet.AspNetCore;
 using MQTTnet.Server;
 using NJsonSchema;
 using NSwag.AspNetCore;
+using System;
 using System.Reflection;
 
 namespace MQTT.Chat
@@ -34,43 +35,51 @@ namespace MQTT.Chat
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
+            services.AddHealthChecks();
             services.AddMqttBrokerOption(Configuration);
+
             services.AddMQTTDbContext(Configuration);
             services.AddTransient<MqttEventsHandler>();
-            services.AddSingleton<IMqttServerStorage, RetainedMessageHandler>();
+            services.AddTransient<IMqttServerStorage, RetainedMessageHandler>();
             services.AddDefaultIdentity<IdentityUser>()
                 .AddEntityFrameworkStores<ApplicationDbContext>();
             services.AddAuthentication().AddJwtBearer();
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_1);
             services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
-            services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption());
+            services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption(_storage));
             services.AddMqttTcpServerAdapter();
-            services.AddSwagger();
+            services.AddSwaggerDocument(configure =>
+            {
+                Assembly assembly = typeof(Startup).GetTypeInfo().Assembly;
+                var description = (AssemblyDescriptionAttribute)Attribute.GetCustomAttribute(assembly, typeof(AssemblyDescriptionAttribute));
+                configure.Title = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
+                configure.Version = typeof(Startup).GetTypeInfo().Assembly.GetName().Version.ToString();
+                configure.Description = description?.Description;
+
+            });
+
         }
 
+        IMqttServerStorage _storage;
+
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<MQTTBrokerOption> options, MqttEventsHandler mqttEventsHandler, ApplicationDbContext context)
+        public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<MQTTBrokerOption> options, MqttEventsHandler mqttEventsHandler, IMqttServerStorage storage)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
             app.UseStaticFiles();
-            app.UseSwaggerUi3WithApiExplorer(settings =>
-            {
-                settings.GeneratorSettings.DefaultPropertyNameHandling =
-                    PropertyNameHandling.CamelCase;
-                settings.GeneratorSettings.Title = typeof(Startup).GetTypeInfo().Assembly.GetName().Name;
-                settings.GeneratorSettings.Version = typeof(Startup).GetTypeInfo().Assembly.GetName().Version.ToString();
-            });
+            app.UseSwaggerUi3();
+            app.UseSwagger();
             app.UseHttpsRedirection();
             app.UseCookiePolicy();
             app.UseAuthentication();
+            app.UseHealthChecks("/health");
             app.UseMvc();
             app.UseMqttEndpoint();
-            MqttEventsHandler.Instance = mqttEventsHandler;
-          //  RetainedMessageHandler.Instance = serverStorage;
-            MQTTBroker.MQTTBrokerOption = options.Value;
+            app.UseEventsHander( mqttEventsHandler);
+            _storage = storage;
             app.UseMqttServer(server =>
             {
                 server.ClientConnected += mqttEventsHandler.Server_ClientConnected;
@@ -79,10 +88,13 @@ namespace MQTT.Chat
                 server.ApplicationMessageReceived += mqttEventsHandler.Server_ApplicationMessageReceived;
                 server.ClientSubscribedTopic += mqttEventsHandler.Server_ClientSubscribedTopic;
                 server.ClientUnsubscribedTopic += mqttEventsHandler.Server_ClientUnsubscribedTopic;
+                server.ClientDisconnected += mqttEventsHandler.Server_ClientDisconnected;
             });
             app.UseMqttBrokerLogger();
-            context.Database.EnsureCreated();
             app.UseAuthentication();
+
         }
+
+   
     }
 }

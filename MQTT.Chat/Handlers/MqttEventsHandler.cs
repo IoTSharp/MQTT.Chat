@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using MQTT.Chat.Data;
@@ -6,30 +7,26 @@ using MQTTnet;
 using MQTTnet.Server;
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 
 namespace MQTT.Chat
 {
     public class MqttEventsHandler
     {
-        public MqttEventsHandler(ILogger<MqttEventsHandler> logger, 
-            IOptions<MQTTBrokerOption> options,
-            ApplicationDbContext context,
-            UserManager<IdentityUser> userManager,
-            SignInManager<IdentityUser> signInManager)
+        public MqttEventsHandler(ILogger<MqttEventsHandler> logger,
+            IOptions<MQTTBrokerOption> options
+       )
         {
             _logger = logger;
-            _context = context;
             _options = options.Value;
-            _userManager = userManager;
-            _signInManager = signInManager;
+
         }
-        UserManager<IdentityUser> _userManager;
-           SignInManager<IdentityUser> _signInManager;
+        internal SignInManager<IdentityUser> _signInManager;
         private MQTTBrokerOption _options;
-        private ApplicationDbContext _context;
         private ILogger<MqttEventsHandler> _logger;
-        public static MqttEventsHandler Instance { get; internal set; }
+
 
         private static long clients = 0;
 
@@ -96,6 +93,8 @@ namespace MQTT.Chat
             }
         }
 
+
+
         internal void Server_ClientUnsubscribedTopic(object sender, MqttClientUnsubscribedTopicEventArgs e)
         {
             _logger.LogInformation($"客户端[{e.ClientId}]取消订阅[{e.TopicFilter}]");
@@ -105,33 +104,63 @@ namespace MQTT.Chat
                 Task.Run(() => ((IMqttServer)sender).PublishAsync("$SYS/broker/subscriptions/count", Subscribed.ToString()));
             }
         }
-
-        internal async  Task  MqttConnectionValidatorContextAsync(MqttConnectionValidatorContext obj)
+        SortedDictionary<string, IdentityUser> _sessions = new SortedDictionary<string, IdentityUser>();
+        internal void MqttConnectionValidatorContextAsync(MqttConnectionValidatorContext obj)
         {
-            _logger.LogInformation($"ClientId={obj.ClientId},Endpoint={obj.Endpoint},Username={obj.Username}，Password={obj.Password},WillMessage={obj.WillMessage?.ConvertPayloadToString()}");
-            var id = await _userManager.FindByNameAsync(obj.Username);
- 
-            var sresult = await  _signInManager.PasswordSignInAsync(obj.Username, obj.Password, false, false);
-            if (sresult.Succeeded)
+            Task.Run(async () =>
             {
-                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionAccepted;
-            }
-            else if (sresult.IsLockedOut)
+               
+                if (!_sessions.ContainsKey(obj.ClientId) )
+                {
+                    var user = await _signInManager.UserManager.FindByNameAsync(obj.Username);
+                    var claims = await _signInManager.UserManager.GetClaimsAsync(user);
+
+                    if (await _signInManager.CanSignInAsync(user) && claims.Any(c=>c.Type== ClaimTypes.GivenName &&  c.Value ==obj.ClientId))
+                    {
+                     
+                        var sresult = await _signInManager.CheckPasswordSignInAsync(user, obj.Password, false);
+                        if (sresult.Succeeded)
+                        {
+                            obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionAccepted;
+                            var loginfo = await _signInManager.UserManager.GetLoginsAsync(user);
+
+                            _sessions.Add(obj.ClientId, user);
+                        }
+                        else if (sresult.IsLockedOut)
+                        {
+                            obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
+                        }
+                        else if (sresult.IsNotAllowed)
+                        {
+                            obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedNotAuthorized;
+                        }
+                        else if (sresult.RequiresTwoFactor)
+                        {
+                            obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
+                        }
+                        else
+                        {
+                            obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedNotAuthorized;
+                        }
+                    }
+                }
+                else
+                {
+
+                    obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
+                }
+            }).Wait(TimeSpan.FromSeconds(10));
+        }
+        internal void Server_ClientDisconnected(object sender, MqttClientDisconnectedEventArgs e)
+        {
+            Task.Run(async () =>
             {
-                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
-            }
-            else if (sresult.IsNotAllowed)
-            {
-                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedNotAuthorized;
-            }
-            else if (sresult.RequiresTwoFactor)
-            {
-                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedIdentifierRejected;
-            }
-            else
-            {
-                obj.ReturnCode = MQTTnet.Protocol.MqttConnectReturnCode.ConnectionRefusedServerUnavailable;
-            }
+                var lst = await ((IMqttServer)sender).GetClientSessionsStatusAsync();
+                if (_sessions.ContainsKey(e.ClientId))
+                {
+                    _sessions.Remove(e.ClientId);
+                }
+            });
         }
     }
 }

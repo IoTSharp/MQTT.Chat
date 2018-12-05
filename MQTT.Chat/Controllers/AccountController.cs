@@ -102,25 +102,29 @@ namespace MQTT.Chat.Controllers
                     if (result.Succeeded)
                     {
                         await _signInManager.SignInAsync(user, false);
+                        await _signInManager.UserManager.AddClaimAsync(user, new Claim(ClaimTypes.GivenName, model.ClientId));
+                        await _signInManager.UserManager.AddClaimAsync(user, new Claim(ClaimTypes.Email, model.Email));
+                        int _StoreCertPem=0;
                         if (model.TLS)
                         {
                             SubjectAlternativeNameBuilder altNames = new SubjectAlternativeNameBuilder();
                             altNames.AddDnsName(model.ClientId);
                             altNames.AddEmailAddress(model.Email);
                             altNames.AddUserPrincipalName(model.UserName);
-                            altNames.AddUri(new Uri($"mqtt://{_options.BrokerCertificate.GetNameInfo( X509NameType.DnsName,false)}:{_options.SSLPort}"));
+                            altNames.AddUri(new Uri($"mqtt://{_options.BrokerCertificate.GetNameInfo(X509NameType.DnsName, false)}:{_options.SSLPort}"));
                             string name = $"CN={model.ClientId},C=CN, O={_options.BrokerCertificate.GetNameInfo(X509NameType.SimpleName, false)},OU={model.ClientId}";
                             var tlsclient = _options.CACertificate.CreateTlsClientRSA(name, altNames);
-                            string x509CRT, x509Key;
-                            tlsclient.SavePem(out x509CRT, out x509Key);
-                            StoreCertPem storeCertPem = new StoreCertPem()
+                            tlsclient.SavePem(out string x509CRT, out string x509Key);
+                            _context.StoreCertPem.Add(new StoreCertPem()
                             {
                                 Id = user.Id,
                                 ClientCert = x509CRT,
-                                 ClientKey  = x509Key
-                            };
+                                ClientKey = x509Key
+                            });
+                            _StoreCertPem= _context.SaveChanges();
+                            await _signInManager.UserManager.AddClaimAsync(user, new Claim(ClaimTypes.Thumbprint, tlsclient.Thumbprint));
                         }
-                        actionResult = Ok(new { code = 0, msg = "OK", data = GenerateJwtToken(model.UserName, user) });
+                        actionResult = Ok(new { code = 0, msg = "OK", data = GenerateJwtToken(model.UserName, user), model.TLS,StoreTLS= _StoreCertPem>0 });
                     }
                     else
                     {
@@ -132,6 +136,7 @@ namespace MQTT.Chat.Controllers
             catch (Exception ex)
             {
                 actionResult = BadRequest(new { code = -2, msg = ex.Message, data = ex });
+                _logger.LogError(ex, ex.Message);
             }
 
             return actionResult;
@@ -225,12 +230,14 @@ namespace MQTT.Chat.Controllers
         {
             [Required]
             public string Password { get; set; }
+            
             [Required]
-            public string UserName { get; internal set; }
+            public string UserName { get;  set; }
         }
 
         public class RegisterDto
         {
+
             [Required]
             public string UserName { get; set; }
 
