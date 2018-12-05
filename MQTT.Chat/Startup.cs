@@ -2,6 +2,7 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Configuration;
@@ -89,13 +90,14 @@ namespace MQTT.Chat
             {
                 app.UseDeveloperExceptionPage();
             }
-            app.UseStaticFiles();
             app.UseSwaggerUi3();
             app.UseSwagger();
             app.UseHttpsRedirection();
             app.UseCookiePolicy();
             app.UseAuthentication();
             app.UseMvc();
+            app.UseDefaultFiles();
+            app.UseStaticFiles();
             app.UseMqttEndpoint();
             app.UseEventsHander(mqttEventsHandler);
             _storage = storage;
@@ -110,18 +112,17 @@ namespace MQTT.Chat
                 server.ClientDisconnected += mqttEventsHandler.Server_ClientDisconnected;
             });
             app.UseMqttBrokerLogger();
+            app.UseForwardedHeaders(new ForwardedHeadersOptions
+            {
+                ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+            });
+
             app.UseAuthentication();
             app.UseHealthChecks("/health", new HealthCheckOptions()
             {
                 // This custom writer formats the detailed status as JSON.
                 ResponseWriter = WriteResponse,
             });
-
-            app.Run(async (context) =>
-            {
-                await context.Response.WriteAsync("Go to /health to see the health status");
-            });
-
         }
         private static Task WriteResponse(HttpContext httpContext, HealthReport result)
         {
