@@ -2,6 +2,16 @@
 
   <PropertyGroup>
     <TargetFramework>netcoreapp2.2</TargetFramework>
+    <Company>IoTSharp</Company>
+    <Product>MQTT.Chat</Product>
+    <Authors>maikebing</Authors>
+    <PackageProjectUrl>https://github.com/IoTSharp/MQTT.Chat</PackageProjectUrl>
+    <PackageLicenseUrl>https://github.com/IoTSharp/MQTT.Chat/blob/master/LICENSE</PackageLicenseUrl>
+    <RepositoryUrl>https://github.com/IoTSharp/MQTT.Chat</RepositoryUrl>
+    <PackageReleaseNotes>MQTT.Chat broker is a fully open source, highly scalable, highly available distributed MQTT messaging broker for IoT https://mqtt.chat
+</PackageReleaseNotes>
+    <Description>MQTT.Chat broker is a fully open source, highly scalable, highly available distributed MQTT messaging broker for IoT https://mqtt.chat
+</Description>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +23,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="GitVersionTask" Version="4.0.0">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+    </PackageReference>
     <PackageReference Include="IoTSharp.X509Extensions" Version="1.3.3" />
     <PackageReference Include="LiteDB" Version="4.1.4" />
     <PackageReference Include="Microsoft.AspNetCore.App" />
