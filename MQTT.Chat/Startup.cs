@@ -64,6 +64,8 @@ namespace MQTT.Chat
             services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
             services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption(_storage));
             services.AddMqttTcpServerAdapter();
+            services.AddMqttConnectionHandler();
+            services.AddMqttWebSocketServerAdapter();
             services.AddSwaggerDocument(configure =>
             {
                 Assembly assembly = typeof(Startup).GetTypeInfo().Assembly;
