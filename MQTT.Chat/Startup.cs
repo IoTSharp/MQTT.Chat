@@ -105,7 +105,13 @@ namespace MQTT.Chat
                 app.UseDeveloperExceptionPage();
             }
             app.UseSwaggerUi3();
-         
+            app.UseHealthChecks("/health", new HealthCheckOptions()
+            {
+                Predicate = _ => true,
+                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            });
+
+            app.UseHealthChecksUI();
             app.UseHttpsRedirection();
             app.UseCookiePolicy();
             app.UseAuthentication();
@@ -146,7 +152,7 @@ namespace MQTT.Chat
                 return externalPath + internalUiRoute;
             });
             app.UseAuthentication();
-            app.UseHealthChecksUI();
+ 
  
         }
     }
