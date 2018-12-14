@@ -12,6 +12,7 @@ using MQTTnet.Protocol;
 using MQTTnet.Server;
 using System;
 using System.IO;
+using System.Linq;
 using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 
@@ -24,6 +25,7 @@ namespace MQTT.Chat
 
         public static void AddMQTTDbContext(this IServiceCollection services, IConfiguration configuration)
         {
+        
             var _DataBase = configuration["DataBase"] ?? "sqlite";
             var _ConnectionString = Environment.ExpandEnvironmentVariables(configuration.GetConnectionString(_DataBase) ?? "Data Source=%APPDATA%\\MQTT.Chat\\MQTTChat.db;Pooling=true;");
             switch (_DataBase)
@@ -31,24 +33,40 @@ namespace MQTT.Chat
                 case "mssql":
                     services.AddEntityFrameworkSqlServer();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(_ConnectionString), ServiceLifetime.Transient);
+                    services.AddHealthChecks().AddSqlServer(_ConnectionString,name:"database").AddMQTTChatHealthChecks();
                     break;
 
                 case "npgsql":
                     services.AddEntityFrameworkNpgsql();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(_ConnectionString), ServiceLifetime.Transient);
+                    services.AddHealthChecks().AddNpgSql(_ConnectionString, name: "database").AddMQTTChatHealthChecks();
                     break;
 
                 case "memory":
                     services.AddEntityFrameworkInMemoryDatabase();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(nameof(ApplicationDbContext)), ServiceLifetime.Transient);
+                    services.AddHealthChecks().AddMQTTChatHealthChecks();
                     break;
 
                 case "sqlite":
                 default:
                     services.AddEntityFrameworkSqlite();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_ConnectionString), ServiceLifetime.Transient);
+                    services.AddHealthChecks().AddSqlite(_ConnectionString, name: "database").AddMQTTChatHealthChecks();
                     break;
             }
+            services.AddHealthChecksUI();
+        }
+        private static void AddMQTTChatHealthChecks(this IHealthChecksBuilder builder)
+        {
+            builder.AddPrivateMemoryHealthCheck(1024 * 1024 * 1024,"privatememory")
+             .AddDiskStorageHealthCheck(setup =>
+             {
+                 DriveInfo.GetDrives().ToList().ForEach(di =>
+                 {
+                     setup.AddDrive(di.Name, 1024);
+                 });
+             });
         }
         internal static MqttEventsHandler _mqttEventsHandler;
         internal static MQTTBrokerOption MQTTBrokerOption;

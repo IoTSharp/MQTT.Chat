@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Builder;
+﻿using HealthChecks.UI.Client;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -22,6 +23,7 @@ using Quartz;
 using QuartzHostedService;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
@@ -41,13 +43,17 @@ namespace MQTT.Chat
         // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
+      
+            services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
             services.Configure<CookiePolicyOptions>(options =>
             {
                 // This lambda determines whether user consent for non-essential cookies is needed for a given request.
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
-            services.AddHealthChecks().AddGCInfoCheck("GCInfo").AddBrokerCheck("BrokerStatus");
+      
+
             services.AddMqttBrokerOption(Configuration);
 
             services.AddMQTTDbContext(Configuration);
@@ -60,8 +66,8 @@ namespace MQTT.Chat
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             });
-            services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-            services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
+     
+   
             services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption(_storage));
             services.AddMqttTcpServerAdapter();
             services.AddMqttConnectionHandler();
@@ -83,8 +89,11 @@ namespace MQTT.Chat
                         .WithSimpleSchedule(x => x.WithIntervalInSeconds(10).RepeatForever()));
                 return result;
             });
-
+         
+        
         }
+
+  
 
         IMqttServerStorage _storage;
 
@@ -137,26 +146,8 @@ namespace MQTT.Chat
                 return externalPath + internalUiRoute;
             });
             app.UseAuthentication();
-            app.UseHealthChecks("/health", new HealthCheckOptions()
-            {
-                // This custom writer formats the detailed status as JSON.
-                ResponseWriter = WriteResponse,
-            });
+            app.UseHealthChecksUI();
+ 
         }
-        private static Task WriteResponse(HttpContext httpContext, HealthReport result)
-        {
-            httpContext.Response.ContentType = "application/json";
-
-            var json = new JObject(
-                new JProperty("status", result.Status.ToString()),
-                new JProperty("results", new JObject(result.Entries.Select(pair =>
-                    new JProperty(pair.Key, new JObject(
-                        new JProperty("status", pair.Value.Status.ToString()),
-                        new JProperty("description", pair.Value.Description),
-                        new JProperty("data", new JObject(pair.Value.Data.Select(p => new JProperty(p.Key, p.Value))))))))));
-            return httpContext.Response.WriteAsync(json.ToString(Formatting.Indented));
-        }
-
-
     }
 }

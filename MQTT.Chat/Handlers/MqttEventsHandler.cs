@@ -155,14 +155,14 @@ namespace MQTT.Chat
         }
         internal void Server_ClientDisconnected(object sender, MqttClientDisconnectedEventArgs e)
         {
-            Task.Run(async () =>
-            {
-                var lst = await ((IMqttServer)sender).GetClientSessionsStatusAsync();
-                if (_sessions.ContainsKey(e.ClientId))
-                {
-                    _sessions.Remove(e.ClientId);
-                }
-            });
+            Task.Run(() =>
+           {
+               var lst = ((IMqttServer)sender).GetClientSessionsStatus();
+               if (_sessions.ContainsKey(e.ClientId))
+               {
+                   _sessions.Remove(e.ClientId);
+               }
+           });
         }
     }
 }

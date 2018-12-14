@@ -330,3 +330,4 @@ ASALocalRun/
 .mfractor/
 /IoTSharp.MqqtBroker/RetainedMessages.db
 /MQTT.Chat/RetainedMessages.db
+/healthchecksdb

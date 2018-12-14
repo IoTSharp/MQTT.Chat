@@ -5,6 +5,7 @@
     <Company>IoTSharp</Company>
     <Product>MQTT.Chat</Product>
     <Authors>maikebing</Authors>
+        <AspNetCoreHostingModel>inprocess</AspNetCoreHostingModel>
     <PackageProjectUrl>https://github.com/IoTSharp/MQTT.Chat</PackageProjectUrl>
     <PackageLicenseUrl>https://github.com/IoTSharp/MQTT.Chat/blob/master/LICENSE</PackageLicenseUrl>
     <RepositoryUrl>https://github.com/IoTSharp/MQTT.Chat</RepositoryUrl>
@@ -24,6 +25,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="AspNetCore.HealthChecks.Network" Version="2.2.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.NpgSql" Version="2.2.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.Sqlite" Version="2.2.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.SqlServer" Version="2.2.0" />
+    <PackageReference Include="AspNetCore.HealthChecks.System" Version="2.2.1" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI" Version="2.2.4" />
+    <PackageReference Include="AspNetCore.HealthChecks.UI.Client" Version="2.2.2" />
     <PackageReference Include="GitVersionTask" Version="4.0.0">
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
@@ -42,7 +50,7 @@
     <PackageReference Include="MQTTnet" Version="2.8.5" />
     <PackageReference Include="MQTTnet.AspNetCore" Version="2.8.5" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="2.2.0" />
-    <PackageReference Include="NSwag.AspNetCore" Version="12.0.5" />
+    <PackageReference Include="NSwag.AspNetCore" Version="12.0.7" />
     <PackageReference Include="QuartzHostedService" Version="0.0.3" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
   </ItemGroup>
