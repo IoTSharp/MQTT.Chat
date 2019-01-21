@@ -1,5 +1,4 @@
-﻿using HealthChecks.UI.Client;
-using Microsoft.AspNetCore.Builder;
+﻿using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
@@ -28,7 +27,6 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 
-
 namespace MQTT.Chat
 {
     public class Startup
@@ -44,7 +42,7 @@ namespace MQTT.Chat
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddMvc().SetCompatibilityVersion(CompatibilityVersion.Version_2_2);
-      
+
             services.AddLogging(loggingBuilder => loggingBuilder.AddConsole());
             services.Configure<CookiePolicyOptions>(options =>
             {
@@ -52,7 +50,6 @@ namespace MQTT.Chat
                 options.CheckConsentNeeded = context => true;
                 options.MinimumSameSitePolicy = SameSiteMode.None;
             });
-      
 
             services.AddMqttBrokerOption(Configuration);
 
@@ -66,8 +63,7 @@ namespace MQTT.Chat
             {
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             });
-     
-   
+
             services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption(_storage));
             services.AddMqttTcpServerAdapter();
             services.AddMqttConnectionHandler();
@@ -89,13 +85,9 @@ namespace MQTT.Chat
                         .WithSimpleSchedule(x => x.WithIntervalInSeconds(10).RepeatForever()));
                 return result;
             });
-         
-        
         }
 
-  
-
-        IMqttServerStorage _storage;
+        private IMqttServerStorage _storage;
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env, IOptions<MQTTBrokerOption> options, MqttEventsHandler mqttEventsHandler, IMqttServerStorage storage)
@@ -105,13 +97,13 @@ namespace MQTT.Chat
                 app.UseDeveloperExceptionPage();
             }
             app.UseSwaggerUi3();
-            app.UseHealthChecks("/health", new HealthCheckOptions()
-            {
-                Predicate = _ => true,
-                ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
-            });
+            //app.UseHealthChecks("/health", new HealthCheckOptions()
+            //{
+            //    Predicate = _ => true,
+            //    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+            //});
 
-            app.UseHealthChecksUI();
+            //      app.UseHealthChecksUI();
             app.UseHttpsRedirection();
             app.UseCookiePolicy();
             app.UseAuthentication();
@@ -152,8 +144,6 @@ namespace MQTT.Chat
                 return externalPath + internalUiRoute;
             });
             app.UseAuthentication();
- 
- 
         }
     }
 }

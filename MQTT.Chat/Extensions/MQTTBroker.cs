@@ -21,11 +21,9 @@ namespace MQTT.Chat
     public static class MQTTBroker
     {
         public static BrokerStatus Status { get; set; } = new BrokerStatus();
- 
 
         public static void AddMQTTDbContext(this IServiceCollection services, IConfiguration configuration)
         {
-        
             var _DataBase = configuration["DataBase"] ?? "sqlite";
             var _ConnectionString = Environment.ExpandEnvironmentVariables(configuration.GetConnectionString(_DataBase) ?? "Data Source=%APPDATA%\\MQTT.Chat\\MQTTChat.db;Pooling=true;");
             switch (_DataBase)
@@ -33,64 +31,51 @@ namespace MQTT.Chat
                 case "mssql":
                     services.AddEntityFrameworkSqlServer();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseSqlServer(_ConnectionString), ServiceLifetime.Transient);
-                    services.AddHealthChecks().AddSqlServer(_ConnectionString,name:"database").AddMQTTChatHealthChecks();
                     break;
 
                 case "npgsql":
                     services.AddEntityFrameworkNpgsql();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseNpgsql(_ConnectionString), ServiceLifetime.Transient);
-                    services.AddHealthChecks().AddNpgSql(_ConnectionString, name: "database").AddMQTTChatHealthChecks();
                     break;
 
                 case "memory":
                     services.AddEntityFrameworkInMemoryDatabase();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(nameof(ApplicationDbContext)), ServiceLifetime.Transient);
-                    services.AddHealthChecks().AddMQTTChatHealthChecks();
                     break;
 
                 case "sqlite":
                 default:
                     services.AddEntityFrameworkSqlite();
                     services.AddDbContext<ApplicationDbContext>(options => options.UseSqlite(_ConnectionString), ServiceLifetime.Transient);
-                    services.AddHealthChecks().AddSqlite(_ConnectionString, name: "database").AddMQTTChatHealthChecks();
                     break;
             }
-            services.AddHealthChecksUI();
         }
-        private static void AddMQTTChatHealthChecks(this IHealthChecksBuilder builder)
-        {
-            builder.AddPrivateMemoryHealthCheck(1024 * 1024 * 1024,"privatememory")
-             .AddDiskStorageHealthCheck(setup =>
-             {
-                 DriveInfo.GetDrives().ToList().ForEach(di =>
-                 {
-                     setup.AddDrive(di.Name, 1024);
-                 });
-             });
-        }
+
         internal static MqttEventsHandler _mqttEventsHandler;
         internal static MQTTBrokerOption MQTTBrokerOption;
-        public static void UseMqttBrokerOption(this MqttServerOptionsBuilder builder,  IMqttServerStorage storage )
+
+        public static void UseMqttBrokerOption(this MqttServerOptionsBuilder builder, IMqttServerStorage storage)
         {
             var options = MQTTBrokerOption;
-                if (options.BrokerCertificate != null)
-                {
-                    builder.WithEncryptionCertificate(options.BrokerCertificate.Export(X509ContentType.Pfx))
-                    .WithEncryptedEndpoint()
-                    .WithEncryptedEndpointPort(options.SSLPort);
-                }
-                builder.WithDefaultEndpoint()
-                .WithDefaultEndpointPort(options.Port)
-                .WithStorage(storage)
-                .WithConnectionValidator(_mqttEventsHandler.MqttConnectionValidatorContextAsync)
-               .Build();
-   
+            if (options.BrokerCertificate != null)
+            {
+                builder.WithEncryptionCertificate(options.BrokerCertificate.Export(X509ContentType.Pfx))
+                .WithEncryptedEndpoint()
+                .WithEncryptedEndpointPort(options.SSLPort);
+            }
+            builder.WithDefaultEndpoint()
+            .WithDefaultEndpointPort(options.Port)
+            .WithStorage(storage)
+            .WithConnectionValidator(_mqttEventsHandler.MqttConnectionValidatorContextAsync)
+           .Build();
         }
+
         public static void UseEventsHander(this IApplicationBuilder app, MqttEventsHandler mqttEventsHandler)
         {
             _mqttEventsHandler = mqttEventsHandler;
             _mqttEventsHandler._signInManager = app.ApplicationServices.CreateScope().ServiceProvider.GetRequiredService<SignInManager<IdentityUser>>();
         }
+
         public static void AddMqttBrokerOption(this IServiceCollection services, IConfiguration Configuration)
         {
             services.AddOptions()
@@ -174,7 +159,7 @@ namespace MQTT.Chat
         public string CertificateFile { get; set; } // "CertificateFile": "%APPDATA%\\IoT.MqqtBroker\\server.crt",
         public string PrivateKeyFile { get; set; } //"PrivateKeyFile": "%APPDATA%\\IoT.MqqtBroker\\server.key",
         public string KeyPassword { get; set; } // "KeyPassword": "",
-        public int  SSLPort { get;  set; }=8883;
+        public int SSLPort { get; set; } = 8883;
         public int Port { get; set; } = 1883;
     }
 }
