@@ -41,7 +41,7 @@ namespace MQTT.Chat.Handlers
                 var jt = ((Newtonsoft.Json.Linq.JProperty)jk);
                 keyValues.Add(jt.Name, jt.Value);
             });
-            var result =MQTTBroker.Status ==null ||  MQTTBroker._mqttEventsHandler==null  ? context.Registration.FailureStatus : HealthStatus.Healthy;
+            var result =MQTTBroker.Status ==null    ? context.Registration.FailureStatus : HealthStatus.Healthy;
             return Task.FromResult(new HealthCheckResult(
                 result,
                 description: "report broker status ",

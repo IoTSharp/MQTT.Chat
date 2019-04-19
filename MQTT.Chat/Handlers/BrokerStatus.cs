@@ -15,7 +15,7 @@ namespace MQTT.Chat.Handlers
             Topics = new Dictionary<string, int>();
             Changeset = System.Text.Encoding.Default.EncodingName;
             var mename = typeof(MqttEventsHandler).Assembly.GetName();
-            var mqttnet = typeof(MqttClientSubscribedTopicEventArgs).Assembly.GetName();
+            var mqttnet = typeof(MqttServerClientSubscribedTopicEventArgs).Assembly.GetName();
             Version = $"{mename.Name}V{mename.Version.ToString()},{mqttnet.Name}.{mqttnet.Version.ToString()}";
         }
 

@@ -17,21 +17,22 @@ namespace MQTT.Chat
     public class MqttEventsHandler
     {
         public MqttEventsHandler(ILogger<MqttEventsHandler> logger,
-            IOptions<MQTTBrokerOption> options
+            IOptions<MQTTBrokerOption> options, SignInManager<IdentityUser> signInManager
        )
         {
             _logger = logger;
             _options = options.Value;
+            _signInManager = signInManager;
 
         }
-        internal SignInManager<IdentityUser> _signInManager;
-        private MQTTBrokerOption _options;
-        private ILogger<MqttEventsHandler> _logger;
+        private readonly SignInManager<IdentityUser> _signInManager;
+        private readonly MQTTBrokerOption _options;
+        private readonly ILogger<MqttEventsHandler> _logger;
 
 
  
 
-        internal void Server_ClientConnected(object sender, MqttClientConnectedEventArgs e)
+        internal void Server_ClientConnected(object sender,  MqttServerClientConnectedEventArgs  e)
         {
             _logger.LogInformation($"Client [{e.ClientId}] Connected");
             MQTTBroker.Status.Clients++;
@@ -77,7 +78,7 @@ namespace MQTT.Chat
 
       
 
-        internal void Server_ClientSubscribedTopic(object sender, MqttClientSubscribedTopicEventArgs e)
+        internal void Server_ClientSubscribedTopic(object sender, MqttServerClientSubscribedTopicEventArgs  e)
         {
             _logger.LogInformation($"Client [{e.ClientId}]Subscribed[{e.TopicFilter}]");
             if (e.TopicFilter.Topic.StartsWith("$SYS/"))
@@ -93,7 +94,7 @@ namespace MQTT.Chat
 
 
 
-        internal void Server_ClientUnsubscribedTopic(object sender, MqttClientUnsubscribedTopicEventArgs e)
+        internal void Server_ClientUnsubscribedTopic(object sender, MqttServerClientUnsubscribedTopicEventArgs e)
         {
             _logger.LogInformation($"Client [{e.ClientId}] Unsubscribed[{e.TopicFilter}]");
             if (!e.TopicFilter.StartsWith("$SYS/"))
@@ -153,11 +154,12 @@ namespace MQTT.Chat
                 }
             }).Wait(TimeSpan.FromSeconds(10));
         }
-        internal void Server_ClientDisconnected(object sender, MqttClientDisconnectedEventArgs e)
+        internal void Server_ClientDisconnected(object sender, MqttServerClientDisconnectedEventArgs e)
         {
-            Task.Run(() =>
+            Task.Run(async () =>
            {
-               var lst = ((IMqttServer)sender).GetClientSessionsStatus();
+               var svr = ((IMqttServer)sender);
+               var lst =  await svr?.GetSessionStatusAsync();
                if (_sessions.ContainsKey(e.ClientId))
                {
                    _sessions.Remove(e.ClientId);

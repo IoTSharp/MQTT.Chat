@@ -10,12 +10,10 @@ namespace MQTT.Chat.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
             : base(options)
         {
-           if (this.Database.EnsureCreated())
+
+            if (Database.GetPendingMigrations().Count() > 0)
             {
-                if (Database.GetPendingMigrations().Count()>0)
-                {
-                    Database.Migrate();
-                }
+                Database.Migrate();
             }
         }
         public DbSet<RetainedMessage> RetainedMessages { get; set; }

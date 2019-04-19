@@ -51,7 +51,7 @@ namespace MQTT.Chat
             }
         }
 
-        internal static MqttEventsHandler _mqttEventsHandler;
+    
         internal static MQTTBrokerOption MQTTBrokerOption;
 
         public static void UseMqttBrokerOption(this MqttServerOptionsBuilder builder, IMqttServerStorage storage)
@@ -66,15 +66,10 @@ namespace MQTT.Chat
             builder.WithDefaultEndpoint()
             .WithDefaultEndpointPort(options.Port)
             .WithStorage(storage)
-            .WithConnectionValidator(_mqttEventsHandler.MqttConnectionValidatorContextAsync)
            .Build();
         }
 
-        public static void UseEventsHander(this IApplicationBuilder app, MqttEventsHandler mqttEventsHandler)
-        {
-            _mqttEventsHandler = mqttEventsHandler;
-            _mqttEventsHandler._signInManager = app.ApplicationServices.CreateScope().ServiceProvider.GetRequiredService<SignInManager<IdentityUser>>();
-        }
+        
 
         public static void AddMqttBrokerOption(this IServiceCollection services, IConfiguration Configuration)
         {

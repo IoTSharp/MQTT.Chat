@@ -13,6 +13,8 @@ using Microsoft.Extensions.Options;
 using MQTT.Chat.Data;
 using MQTT.Chat.Handlers;
 using MQTTnet.AspNetCore;
+using MQTTnet.AspNetCoreEx;
+using MQTTnet.Client.Receiving;
 using MQTTnet.Server;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -64,7 +66,7 @@ namespace MQTT.Chat
                 options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto;
             });
 
-            services.AddHostedMqttServer(builder => builder.UseMqttBrokerOption(_storage));
+            services.AddHostedMqttServerEx(builder => builder.UseMqttBrokerOption(_storage));
             services.AddMqttTcpServerAdapter();
             services.AddMqttConnectionHandler();
             services.AddMqttWebSocketServerAdapter();
@@ -111,17 +113,16 @@ namespace MQTT.Chat
             app.UseDefaultFiles();
             app.UseStaticFiles();
             app.UseMqttEndpoint();
-            app.UseEventsHander(mqttEventsHandler);
             _storage = storage;
-            app.UseMqttServer(server =>
+            app.UseMqttServerEx(server =>
             {
-                server.ClientConnected += mqttEventsHandler.Server_ClientConnected;
-                server.Started += mqttEventsHandler.Server_Started;
-                server.Stopped += mqttEventsHandler.Server_Stopped;
-                server.ApplicationMessageReceived += mqttEventsHandler.Server_ApplicationMessageReceived;
-                server.ClientSubscribedTopic += mqttEventsHandler.Server_ClientSubscribedTopic;
-                server.ClientUnsubscribedTopic += mqttEventsHandler.Server_ClientUnsubscribedTopic;
-                server.ClientDisconnected += mqttEventsHandler.Server_ClientDisconnected;
+                server.ClientConnectedHandler = new MqttServerClientConnectedHandlerDelegate(args => mqttEventsHandler.Server_ClientConnected(server, args));
+                server.StartedHandler = new MqttServerStartedHandlerDelegate(args => mqttEventsHandler.Server_Started(server, args));
+                server.StoppedHandler = new MqttServerStoppedHandlerDelegate(args => mqttEventsHandler.Server_Stopped(server, args));
+                server.ApplicationMessageReceivedHandler = new MqttApplicationMessageReceivedHandlerDelegate(args => mqttEventsHandler.Server_ApplicationMessageReceived(server, args));
+                server.ClientSubscribedTopicHandler = new MqttServerClientSubscribedHandlerDelegate(args => mqttEventsHandler.Server_ClientSubscribedTopic(server, args));
+                server.ClientUnsubscribedTopicHandler = new MqttServerClientUnsubscribedTopicHandlerDelegate(args => mqttEventsHandler.Server_ClientUnsubscribedTopic(server, args));
+                server.ClientConnectionValidatorHandler = new MqttServerClientConnectionValidatorHandlerDelegate(args => mqttEventsHandler.MqttConnectionValidatorContextAsync(args.Context));
             });
             app.UseMqttBrokerLogger();
             app.UseForwardedHeaders(new ForwardedHeadersOptions
