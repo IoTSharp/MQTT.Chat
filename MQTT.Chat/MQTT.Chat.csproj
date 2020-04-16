@@ -48,7 +48,7 @@
     <PackageReference Include="MQTTnet.AspNetCore" Version="3.0.0-beta1" />
     <PackageReference Include="MQTTnet.AspNetCoreEx" Version="3.0.0" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="2.2.0" />
-    <PackageReference Include="NSwag.AspNetCore" Version="12.1.0" />
+    <PackageReference Include="NSwag.AspNetCore" Version="13.4.0" />
     <PackageReference Include="QuartzHostedService" Version="0.0.4" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.1" />
   </ItemGroup>
