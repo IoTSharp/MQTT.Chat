@@ -45,7 +45,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="3.1.7" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Design" Version="1.1.6" />
     <PackageReference Include="MQTTnet" Version="3.0.0-beta1" />
-    <PackageReference Include="MQTTnet.AspNetCore" Version="3.0.12" />
+    <PackageReference Include="MQTTnet.AspNetCore" Version="3.0.13" />
     <PackageReference Include="MQTTnet.AspNetCoreEx" Version="3.0.11" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="3.1.4" />
     <PackageReference Include="NSwag.AspNetCore" Version="13.6.1" />
